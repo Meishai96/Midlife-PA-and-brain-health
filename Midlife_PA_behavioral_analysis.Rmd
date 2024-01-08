@@ -1,0 +1,201 @@
+---
+title: "Midlife PA behavioral analysis"
+author: "ai.me@northeastern.edu"
+output: html_document
+date: '2022-04-25'
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(broom)
+library(rlang)
+library(ggpubr)
+library(rstatix)
+```
+#select the data to use
+```{r}
+setwd("~/Documents/PAD/PApast/")
+df <- read_csv("past_2017_new_all_clean_noClinical.csv")
+
+# cognitive variable kist of the five dimensions
+cog <- df %>% select(
+  immediate_memory_index_score,
+  visuospatial_constructional_index_score,
+  language_index_score,
+  attention_index_score,
+  delayed_memory_index_score
+)
+
+# explore relationships between different cognitive measures
+pairs.panels(cog, method = "pearson",
+             density = TRUE,
+             ellipses = TRUE,
+             stars=TRUE)
+
+```
+#  ########## descriptive data ##########
+# demographics
+```{r}
+#descriptive information of demographic factors
+demo <- df %>% summarise(mean_age=mean(age_2017), sd_age=sd(age_2017), mean_edu=mean(Education_years), sd_edu=sd(Education_years))
+demo
+```
+# descriptive visualization about the PA status
+```{r}
+# plot the four physical status groups separately
+MVPA <- df %>% select(ID, exer_past_mvpa, exer_2017_mvpa, act_status) %>% gather(key = time, value = PA, c("exer_past_mvpa","exer_2017_mvpa")) %>% group_by(act_status, time) %>% summarise(MVPA=mean(PA))
+MVPA$act_status <- as.factor(MVPA$act_status)
+# this is the line plot
+MVPA %>% ggplot( aes(x=factor(time, level=c('exer_past_mvpa','exer_2017_mvpa')), y=MVPA, group=act_status, color=act_status)) + xlab(" ")+
+    geom_line(size=1.5) + geom_point(size=2.5) + ggtitle("MVPA engagement") + ylab("MVPA engagement (hours/year)")  +scale_color_manual(name="Physical activity status", labels=c("Active stable", 'Active to Inactive','Inactive to Active','Inactive stable'), values=c("salmon","lightskyblue","yellow","lightgreen"))+scale_x_discrete(labels=c("Mid-life MVPA","Later-life MVPA"))
+# bar plot
+MVPA %>% ggplot( aes(x=factor(time, level=c('exer_past_mvpa','exer_2017_mvpa')), y=MVPA, group=act_status, fill=act_status)) + xlab(" ")+
+    geom_bar(stat="identity", position=position_dodge()) + ggtitle("MVPA engagement") + ylab("MVPA engagement (hours/year)")  +scale_fill_manual(name="Physical activity status", labels=c("Active stable", 'Active to Inactive','Inactive to Active','Inactive stable'), values=c("salmon","lightskyblue","yellow","lightgreen"))+scale_x_discrete(labels=c("Mid-life MVPA","Later-life MVPA")) + theme(axis.title.y = element_text(size = 13), axis.text.x=element_text(size=13))
+# line plot
+TPA <- df %>% select(ID, exer_past_total, exer_2017_total, act_status) %>% gather(key = time, value = PA, c("exer_past_total","exer_2017_total")) %>% group_by(act_status, time) %>% summarise(TPA=mean(PA))
+TPA$act_status <- as.factor(TPA$act_status)
+TPA %>% ggplot( aes(x=factor(time, level=c('exer_past_total','exer_2017_total')), y=TPA, group=act_status, color=act_status)) +
+    geom_line(size=1.5) + geom_point(size=2.5) +ylab("Total PA engagement (hours/year)") + xlab(" ")+  ggtitle("xx") + scale_color_manual(name="Physical activity status", labels=c("Active stable", 'Active to Inactive','Inactive to Active','Inactive stable'), values=c("salmon","lightskyblue","yellow","lightgreen")) + scale_x_discrete(labels=c("Mid-life total PA","Later-life total PA")) + theme(axis.title.y = element_text(size = 13), axis.text.x=element_text(size=13))
+# bar plot
+TPA %>% ggplot( aes(x=factor(time, level=c('exer_past_total','exer_2017_total')), y=TPA, group=act_status, fill=act_status)) +
+    geom_bar(stat="identity", position=position_dodge()) +ggtitle("Total PA engagement") + ylab("Total PA engagement (hours/year)") + xlab(" ")+  ggtitle("xx") + scale_fill_manual(name="Physical activity status", labels=c("Active stable", 'Active to Inactive','Inactive to Active','Inactive stable'), values=c("salmon","lightskyblue","yellow","lightgreen")) + scale_x_discrete(labels=c("Mid-life total PA","Later-life total PA")) + theme(axis.title.y = element_text(size = 13), axis.text.x=element_text(size=13))
+past_2017_new_all_clean_noClinical$act_status <- as.factor(past_2017_new_all_clean_noClinical$act_status)
+
+
+freq <- df[,"act_status"] %>% group_by(act_status) %>% count() %>% ungroup() %>% mutate(perc = `n` / sum(`n`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+ggplot(freq, aes(x = "", y = perc, fill=act_status)) +
+  geom_col() + geom_text(aes(label=labels), position=position_stack(vjust=0.5))+ coord_polar(theta = "y") + scale_fill_manual(name="Physical activity status", labels=c("Active stable", 'Active to Inactive','Inactive to Active','Inactive stable'), values=c("salmon","lightskyblue","yellow","lightgreen")) + theme_bw() + theme(axis.text = element_blank(),axis.ticks = element_blank(),panel.grid  = element_blank(), axis.title = element_blank())
+
+
+```
+# visualization for the five RBANS scores over 4 timepoints
+```{r}
+#df_bl4t is the long format of scores across 4 timepoints
+dmem_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(delayed_memory_index_score, na.rm=TRUE), sd=sd(delayed_memory_index_score, na.rm=TRUE))
+imem_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(immediate_memory_index_score, na.rm=TRUE), sd=sd(immediate_memory_index_score, na.rm=TRUE))
+lang_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(language_index_score, na.rm=TRUE), sd=sd(language_index_score, na.rm=TRUE))
+vis_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(visuospatial_constructional_index_score, na.rm=TRUE), sd=sd(visuospatial_constructional_index_score, na.rm=TRUE))
+att_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(attention_index_score, na.rm=TRUE), sd=sd(attention_index_score, na.rm=TRUE))
+all_bl4t <- df_bl4t %>% group_by(count) %>% summarise(mean=mean(total_scale_index_score, na.rm=TRUE), sd=sd(total_scale_index_score, na.rm=TRUE))
+
+dmem<- ggplot(dmem_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Delayed memory")
+imem<- ggplot(imem_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Immediate memory")
+lang<- ggplot(lang_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Language")
+vis<- ggplot(vis_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Visuospatial function")
+att<- ggplot(att_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Attention")
+all<- ggplot(all_bl4t, aes(x=count, y=mean)) + geom_line() + geom_point() + geom_errorbar( aes(ymin = mean-0.1*sd, ymax = mean+0.1*sd),width = 0.2) + xlab("Timepoint") + ylab("Global score")
+# plot all at once 
+ggarrange(imem,vis,lang,dmem,att, all,ncol=3,nrow=2)
+```
+
+# ########## transformation of PA variables #########
+```{r, include=FALSE}
+library(rcompanion)
+set.seed(2004)
+# define the function to scale variables to 0-1
+scale01 = function(x, ...) {(x - min(x, ...)) / (max(x, ...) - min(x, ...))}
+
+exe_vars <- past_2017_new_all_clean_noClinical %>% dplyr::select(exer_past_total, exer_2017_total, exer_past_mvpa, exer_2017_mvpa, exer_light_past, exer_light_2017 )
+exe_vars_trans <- exe_vars %>% lapply(scale01) %>% lapply(transformTukey) 
+exe_vars_trans <- do.call(cbind, exe_vars_trans) %>% as_tibble()
+
+write_csv(exe_vars_trans,"exe_vars_trans_156.csv")
+```
+# compare distribution between not-transformed and transformed
+```{r}
+#library(data.table)
+# library(dplyr)
+exe_vars_z <- exe_vars %>% mutate_all(scale)
+combine <- list(exe_vars_z, exe_vars_trans) %>% rbindlist(use.names=TRUE, idcol='tran')
+```
+# plot histograms for trans and non-trans
+```{r}
+#library(plyr)
+#library(ggplot2)
+combine$tran <- as.factor(combine$tran)
+
+mu <- ddply(combine, "tran", summarise, grp.mean=mean(exer_2017_mvpa)) # change
+ggplot(combine, aes(x=exer_past_total, color=tran, fill=tran)) + # change
+geom_histogram(aes(y=..density..), position="identity", alpha=0.5)+
+geom_density(alpha=0.6)+
+geom_vline(data=mu, aes(xintercept=grp.mean, color=tran),
+           linetype="dashed")+
+scale_color_manual(values=c("#999999", "#E69F00"), labels=c("Z-transformation","Tukey’s Ladder of Powers"))+
+scale_fill_manual(values=c("#999999", "#E69F00"), labels=c("Z-transformation","Tukey’s Ladder of Powers"))+
+labs(title="Mid-life total PA",x="Exercise time", y = "Density")+ # change
+theme_classic()
+```
+# plot box plots for transformed scores 
+```{r}
+ggplot(combine, aes(x=tran, y=exer_past_mvpa, fill=tran)) + scale_fill_manual(values=c("#999999", "#E69F00"), labels=c("Z-transformation","Tukey’s Ladder of Powers"))+
+    geom_violin(width=1) + geom_boxplot(width=0.1,outlier.color = "black", outlier.size = 2.5)+coord_flip() + labs(y="Mid-life MVPA", fill="Transformation") + theme(text = element_text(size = 15)) 
+```
+
+# ##### Regression ##### 
+# diagnose plots
+```{r}
+diag <- function(y){
+  model_str <-paste(y,"~ time*exer_past_total +time*exer_2017_total + time*age_2017+time*CAIDE_sex_subscore + time*CAIDE_APOE4_subscore+time*Education_years")
+  par(mfrow = c(2, 2))
+  model <- lm(model_str, data = df_4tlong) # long version of RBANS scores across 4 timepoints
+  plot(model)
+}
+
+lapply(as.list(rbans), diag)
+```
+# run the mixed linear model
+```{r}
+library(nlme)
+library(lmerTest)
+
+lm_mix <- function(var) {
+  var_model<-paste(var, "~count*exer_2017_total+ count*exer_past_total + count*age_2017+count*CAIDE_sex_subscore +count*num_times+ count*CAIDE_APOE4_subscore+count*Education_years + (1|ID)")
+  summary(lmerTest::lmer(var_model, REML=FALSE, data=df_bl4t))
+}
+
+lm_mix <- function(var) {
+  var_model<-paste(var, "~count*act_past*act_curr+count*age_2017+count*CAIDE_sex_subscore + count*num_times +  count*CAIDE_APOE4_subscore+count*Education_years + (1|ID)")
+  summary(lmerTest::lmer(var_model, REML=FALSE, data=df_bl4t)) # the interaction analysis
+}
+
+rbans=c("attention_index_score", "delayed_memory_index_score", "immediate_memory_index_score", "language_index_score", "total_scale_index_score", "visuospatial_constructional_index_score")
+lm_mix_rs <- lapply(as.list(rbans), lm_mix)
+```
+# FDR
+```{r}
+#FDR for non-interaction model
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.08313, 0.12205, 0.09052, 0.6918, 0.00398))#MVPA
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.81, 0.55, 0.82, 0.32, 0.61))# time*total PA effect
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.27, 0.01, 0.32, 0.59, 0.01))# time effect total PA
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.11, 0.15, 0.04, 0.12, 0.08)) # total PA effect
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.187358, 0.087256, 0.00207, 0.2713, 0.7753)) # mid MVPA effect
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c(0.37, 0.01, 0.84, 0.53, 0.02)) # time effect MVPA
+p_table<- data.frame(num=c(1,2,3,4,5), pvals_past_total=c( 0.28324, 0.16, 0.13, 0.52, 0.32)) # time*MVPA
+p_table$fdr <- p.adjust(p_table$pvals, method="fdr")
+
+# FDR for interaction model
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.316, 0.6997, 0.0234, 0.0064, 0.472))#act past 
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.7842, 0.8302, 0.3889, 0.21464, 0.1431))# act curr
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.6038, 0.0722, 0.101, 0.4605, 0.02539))# time 
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.8703, 0.8568, 0.268, 0.0407, 0.96134)) # time and past act
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.081, 0.0755, 0.465, 0.06368, 0.60608)) # time and curr act
+p_table<- data.frame(num=c(1,2,3,4,5), pvals=c(0.2832, 0.028, 0.6898, 0.01231, 0.86265)) # interaction
+p_table$fdr <- p.adjust(p_table$pvals, method="fdr")
+p_table$fdr
+```
+
+# ########## interaction plots #########
+```{r}
+library(car)
+library(interactions)
+library(jtools)
+## Plotting: 3 way time BY midlife PA BY later-life PA
+interact_plot(model, pred = count, modx=act_past, mod2=act_curr, x.label = "Timepoints", y.label = "Delayed memory function", legend.main = "Midlife physical activeness",  modx.label = c("Inactive","Active"), mod2.labels = c("Inactive in later-life","Active in later-life"), partial.residuals = TRUE, colors="CUD Bright", interval = TRUE, int.width = 0.9) + theme(axis.title = element_text(size = 14),axis.text=element_text(size=11), legend.text = element_text(size=11),legend.title = element_text(size=11),strip.text = element_text(size=11))
+
+
+```
+
+

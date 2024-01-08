@@ -1,0 +1,50 @@
+---
+title: "RBANS_stats"
+author: "ai.me@northeastern.edu"
+date: '2023-07-17'
+output: html_document
+---
+# loading required packages
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+library(nlme)
+library(lmerTest)
+```
+
+# import dataset 
+```{r}
+#(modify as you need)
+```
+
+# preapre your dataset to long version (have one column of timepoints and one participant will have multiple rows)
+```{r}
+#(modify as you need)
+```
+
+# diagnose plots
+```{r}
+diag <- function(y){
+  model_str <-paste(y,"~var1+var2+var3") # this would be the actual model you will be testing
+  par(mfrow = c(2, 2))
+  model <- lm(model_str, data = df_org_2tlong)
+  plot(model)
+}
+
+lapply(as.list(cog), diag) #cog would be a vector of cognitive variable names
+```
+
+# mixed linear model
+```{r}
+#this lm_mix function let us loop through multiple cognitive variables
+lm_mix <- function(var) {
+  var_model<-paste(var, "~var1+var2+ var3 + (1|ID)") #this 1|ID is accounting for individual differences on intercept
+  summary(lmerTest::lmer(var_model, REML=FALSE, data=df)) #df would be the long dataset you put together
+}
+
+lm_mix_rs <- lapply(as.list(cog), lm_mix) #cog would be a vector of cognitive variable names
+#all results will be stored in lm_mix_rs as lists
+```
+#Note: this function does not automatically give you standardized coefficients; if you need them, scale all the variables before you run the model and the coefficients will be standardized.

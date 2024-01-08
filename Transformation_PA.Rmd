@@ -1,0 +1,23 @@
+---
+title: "transformation_PA"
+author: "ai.me@northeastern.edu, pindus@illinois.edu"
+date: '2023-11-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(rcompanion)
+
+set.seed(2004)
+# define the function to scale variables to 0-1
+scale01 = function(x, ...) {(x - min(x, ...)) / (max(x, ...) - min(x, ...))}
+#prepare a dataset with all the PA variables you want to transform
+exe_vars <- past_2017_new_all_clean_noClinical %>% dplyr::select(exer_past_total, exer_2017_total, exer_past_mvpa, exer_2017_mvpa, exer_light_past, exer_light_2017 )
+# apply the transformation
+exe_vars_trans <- exe_vars %>% lapply(scale01) %>% lapply(transformTukey) 
+#combine all variables together
+exe_vars_trans <- do.call(cbind, exe_vars_trans) %>% as_tibble()
+
+```
+
